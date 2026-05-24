@@ -1,98 +1,257 @@
----
-title: Introduction to development builds
-sidebar_title: Introduction
-description: Why use development builds and how to get started.
-searchRank: 98
-searchPosition: 1
-hideTOC: true
-hasVideoLink: true
----
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-import { BookOpen02Icon } from '@expo/styleguide-icons/outline/BookOpen02Icon';
+// ─────────────────────────────────────────
+// SIMULATED DATABASE
+// ─────────────────────────────────────────
+const DB = {
+  mechanics: [
+    {
+      id: 1, name: "Carlos Mendoza", shop: "MotoTech Pro", rating: 4.9, reviews: 312,
+      distance: "0.8 km", eta: "6 min", price: "S/ 45–80", specialty: "Motor & Frenos",
+      verified: true, available: true, avatar: "CM", jobs: 847, badge: "Top Mecánico",
+      lat: -12.046, lng: -77.042, services: ["Motor", "Frenos", "Suspensión", "Eléctrico"],
+    },
+    {
+      id: 2, name: "Luis Herrera", shop: "Taller Herrera", rating: 4.7, reviews: 189,
+      distance: "1.2 km", eta: "9 min", price: "S/ 35–65", specialty: "Eléctrico & Llantas",
+      verified: true, available: true, avatar: "LH", jobs: 523, badge: "Verificado",
+      lat: -12.048, lng: -77.039, services: ["Eléctrico", "Llantas", "Aceite", "Cadena"],
+    },
+    {
+      id: 3, name: "Roberto Silva", shop: "MotoExpress", rating: 4.8, reviews: 267,
+      distance: "2.1 km", eta: "12 min", price: "S/ 50–90", specialty: "Transmisión",
+      verified: true, available: false, avatar: "RS", jobs: 634, badge: "Premium",
+      lat: -12.050, lng: -77.045, services: ["Transmisión", "Carburador", "Filtros"],
+    },
+    {
+      id: 4, name: "Diego Torres", shop: "Taller Torres", rating: 4.6, reviews: 98,
+      distance: "2.8 km", eta: "15 min", price: "S/ 30–55", specialty: "Mantenimiento General",
+      verified: true, available: true, avatar: "DT", jobs: 201, badge: "Nuevo",
+      lat: -12.043, lng: -77.047, services: ["Aceite", "Filtros", "Llantas", "General"],
+    },
+  ],
+  services: [
+    { id: 1, icon: "⚡", name: "Emergencia", color: "#9C1000", desc: "Avería en la vía" },
+    { id: 2, icon: "🔧", name: "Mecánica", color: "#58B068", desc: "Reparación general" },
+    { id: 3, icon: "🛞", name: "Llantas", color: "#BFD7EA", desc: "Pinchazos y cambio" },
+    { id: 4, icon: "🔋", name: "Eléctrico", color: "#A7D8A0", desc: "Sistema eléctrico" },
+    { id: 5, icon: "🛢️", name: "Aceite", color: "#58B068", desc: "Cambio de aceite" },
+    { id: 6, icon: "🏪", name: "Repuestos", color: "#BFD7EA", desc: "Tienda online" },
+  ],
+  history: [
+    { id: 1, mechanic: "Carlos Mendoza", service: "Cambio de frenos", date: "18 May 2026", price: "S/ 65", status: "Completado", rating: 5 },
+    { id: 2, mechanic: "Luis Herrera", service: "Cambio de llanta", date: "10 May 2026", price: "S/ 45", status: "Completado", rating: 5 },
+    { id: 3, mechanic: "Roberto Silva", service: "Revisión de motor", date: "2 May 2026", price: "S/ 80", status: "Completado", rating: 4 },
+  ],
+  parts: [
+    { id: 1, name: "Pastillas de Freno Delantero", brand: "Brembo", price: "S/ 85", stock: true, img: "🛞" },
+    { id: 2, name: "Filtro de Aceite Universal", brand: "Mann Filter", price: "S/ 25", stock: true, img: "🔧" },
+    { id: 3, name: "Cadena 428H × 120 Eslabones", brand: "DID", price: "S/ 120", stock: true, img: "⚙️" },
+    { id: 4, name: "Batería 12V 9Ah YTX9-BS", brand: "Yuasa", price: "S/ 150", stock: false, img: "🔋" },
+    { id: 5, name: "Llanta Trasera 130/70-17", brand: "Pirelli", price: "S/ 280", stock: true, img: "🛞" },
+    { id: 6, name: "Bujía Iridium CR8EIX", brand: "NGK", price: "S/ 45", stock: true, img: "⚡" },
+  ],
+  workshopOrders: [
+    { id: 1, client: "Miguel Ríos", service: "Cambio de llantas", distance: "1.2 km", price: "S/ 55", urgent: true, moto: "Honda Wave 110", time: "Hace 2 min" },
+    { id: 2, client: "Ana García", service: "Revisión eléctrica", distance: "2.5 km", price: "S/ 70", urgent: false, moto: "Yamaha FZ 150", time: "Hace 5 min" },
+    { id: 3, client: "Pedro Lara", service: "Emergencia motor", distance: "0.8 km", price: "S/ 90", urgent: true, moto: "Bajaj Pulsar 200", time: "Hace 8 min" },
+  ],
+  workshopStats: {
+    todayJobs: 8, weekJobs: 34, monthJobs: 127, rating: 4.9,
+    earnings: { today: "S/ 420", week: "S/ 1,840", month: "S/ 6,350" },
+    pending: 3, active: 1, completed: 4,
+  },
+};
 
-import { BoxLink } from '~/ui/components/BoxLink';
-import { Collapsible } from '~/ui/components/Collapsible';
-import { VideoBoxLink } from '~/ui/components/VideoBoxLink';
+// ─────────────────────────────────────────
+// ICONS
+// ─────────────────────────────────────────
+const Icon = ({ name, size = 22, color = "currentColor" }) => {
+  const icons = {
+    home: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>,
+    map: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1,6 1,22 8,18 16,22 23,18 23,2 16,6 8,2"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>,
+    wrench: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>,
+    chat: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>,
+    user: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+    star: <svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>,
+    location: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+    bell: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
+    shield: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+    zap: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/></svg>,
+    clock: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>,
+    check: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20,6 9,17 4,12"/></svg>,
+    x: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+    trending: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/><polyline points="17,6 23,6 23,12"/></svg>,
+    package: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
+    back: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12,19 5,12 12,5"/></svg>,
+    send: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>,
+    settings: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>,
+    dollar: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>,
+    toggle: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="5" width="22" height="14" rx="7" ry="7"/><circle cx="16" cy="12" r="3" fill={color}/></svg>,
+  };
+  return icons[name] || null;
+};
 
-**Development build** is the term that we use for a "Debug" build of an app that includes the [`expo-dev-client`](/versions/latest/sdk/dev-client/) library. This library augments the built-in React Native development tooling with additional capabilities, such as support for inspecting network requests and a "launcher" UI that lets you switch between different development servers (such as between a server running on your machine or a teammate's machine) and deployments of your app (such as published updates with EAS Update).
+// ─────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────
+const S = {
+  phone: {
+    width: 390, minHeight: 844, background: "#0A0A0A",
+    borderRadius: 48, overflow: "hidden", position: "relative",
+    boxShadow: "0 0 0 8px #1A1A1A, 0 0 0 10px #252525, 0 40px 80px rgba(0,0,0,.8), 0 0 60px rgba(88,176,104,.08)",
+    fontFamily: "'Gafata', sans-serif", color: "#F4F4F4",
+  },
+  screen: { width: "100%", minHeight: 844, background: "#0A0A0A", display: "flex", flexDirection: "column", overflow: "hidden" },
+  scrollArea: { flex: 1, overflowY: "auto", overflowX: "hidden", paddingBottom: 90,
+    scrollbarWidth: "none", msOverflowStyle: "none" },
+  bottomNav: {
+    position: "absolute", bottom: 0, left: 0, right: 0, height: 82,
+    background: "rgba(15,15,15,0.98)", backdropFilter: "blur(20px)",
+    borderTop: "1px solid rgba(88,176,104,.15)", display: "flex",
+    alignItems: "center", justifyContent: "space-around", padding: "0 8px 16px",
+    zIndex: 100,
+  },
+  card: { background: "#161616", border: "1px solid rgba(88,176,104,.12)", borderRadius: 20, padding: 16 },
+  cardGlow: { background: "linear-gradient(135deg,#161616,#121212)", border: "1px solid rgba(88,176,104,.25)", borderRadius: 20, padding: 16, boxShadow: "0 0 20px rgba(88,176,104,.06)" },
+  btn: { background: "linear-gradient(135deg,#58B068,#3d8a4e)", color: "#fff", border: "none", borderRadius: 16, padding: "15px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%", fontFamily: "inherit" },
+  btnRed: { background: "linear-gradient(135deg,#9C1000,#7a0c00)", color: "#fff", border: "none", borderRadius: 16, padding: "15px 24px", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%", fontFamily: "inherit" },
+  btnGhost: { background: "rgba(88,176,104,.08)", color: "#58B068", border: "1px solid rgba(88,176,104,.25)", borderRadius: 16, padding: "13px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", fontFamily: "inherit" },
+  badge: (color="#58B068") => ({ background: `rgba(88,176,104,.12)`, color: "#58B068", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 8, border: `1px solid rgba(88,176,104,.2)` }),
+  tag: (c) => ({ background: `${c}18`, color: c, fontSize: 11, padding: "3px 8px", borderRadius: 6, border: `1px solid ${c}30` }),
+};
 
-<Collapsible summary="Difference between Expo Go and development builds">
+// ─────────────────────────────────────────
+// COMPONENTS
+// ─────────────────────────────────────────
+const GlowDot = ({ online }) => (
+  <span style={{ width: 9, height: 9, borderRadius: "50%", background: online ? "#58B068" : "#555", display: "inline-block", boxShadow: online ? "0 0 8px #58B068" : "none" }} />
+);
 
-[Expo Go](https://expo.dev/go) is a playground app for students and learners to get started quickly. It comes with a fixed set of native libraries built in, so you can write JavaScript code and see changes instantly without building a native app yourself. A development build is a fully featured development environment for working on your production-grade Expo apps.
+const Avatar = ({ initials, size = 42, color = "#58B068" }) => (
+  <div style={{ width: size, height: size, borderRadius: "50%", background: `linear-gradient(135deg,${color}30,${color}15)`, border: `2px solid ${color}50`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * .33, fontWeight: 800, color, flexShrink: 0 }}>
+    {initials}
+  </div>
+);
 
-</Collapsible>
+const Stars = ({ rating, size = 12 }) => (
+  <span style={{ display: "flex", gap: 1 }}>
+    {[1,2,3,4,5].map(i => (
+      <span key={i} style={{ color: i <= Math.round(rating) ? "#F5A623" : "#333", fontSize: size }}>★</span>
+    ))}
+  </span>
+);
 
-<Collapsible summary="Native app and JavaScript bundle">
+// ─────────────────────────────────────────
+// SCREENS
+// ─────────────────────────────────────────
 
-The **native app** is what you install on your device. Expo Go is a pre-built native app that works like a playground — it can't be changed after you install it. To add new native libraries or change things like your app name and icon, you need to build your own native app (a development build).
+// SPLASH
+const SplashScreen = ({ onDone }) => {
+  useEffect(() => { const t = setTimeout(onDone, 2800); return () => clearTimeout(t); }, []);
+  return (
+    <div style={{ ...S.screen, justifyContent: "center", alignItems: "center", background: "#0A0A0A", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 40%, rgba(88,176,104,.18) 0%, transparent 70%)" }} />
+      <motion.div initial={{ scale: .5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 200, delay: .2 }}
+        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+        <motion.div animate={{ boxShadow: ["0 0 20px rgba(88,176,104,.3)","0 0 50px rgba(88,176,104,.6)","0 0 20px rgba(88,176,104,.3)"] }} transition={{ duration: 2, repeat: Infinity }}
+          style={{ width: 110, height: 110, borderRadius: 32, background: "linear-gradient(135deg,#1A1A1A,#111)", border: "2px solid rgba(88,176,104,.4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 58 }}>
+          🏍️
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .6 }}
+          style={{ textAlign: "center" }}>
+          <div style={{ fontFamily: "'Raleway',sans-serif", fontWeight: 900, fontStyle: "italic", fontSize: 40, letterSpacing: -1, color: "#F4F4F4" }}>
+            Moto<span style={{ color: "#58B068" }}>Fix</span>
+          </div>
+          <div style={{ color: "#58B068", fontSize: 13, letterSpacing: 1.5, marginTop: 4, opacity: .8 }}>en movimiento, siempre contigo.</div>
+        </motion.div>
+      </motion.div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }}
+        style={{ position: "absolute", bottom: 80 }}>
+        <motion.div animate={{ opacity: [.4,1,.4] }} transition={{ duration: 1.2, repeat: Infinity }}
+          style={{ display: "flex", gap: 6 }}>
+          {[0,1,2].map(i => (
+            <motion.div key={i} animate={{ scale: [1,1.4,1] }} transition={{ duration: 1.2, repeat: Infinity, delay: i*.2 }}
+              style={{ width: 8, height: 8, borderRadius: "50%", background: i === 1 ? "#58B068" : "rgba(88,176,104,.4)" }} />
+          ))}
+        </motion.div>
+      </motion.div>
+    </div>
+  );
+};
 
-The **JavaScript bundle (`npx expo start`)** is where your app's UI code and business logic are. In production apps, there is one **main.js** bundle that is shipped with the app itself. In development, this JS bundle is live reloaded from your local machine. The main role of React Native is to provide a way for the JavaScript code to access the native APIs (Image, Camera, Notifications, and more). However, only APIs and libraries that were bundled in the **native app** can be used.
+// WELCOME
+const WelcomeScreen = ({ onRole }) => (
+  <div style={{ ...S.screen, justifyContent: "flex-end", background: "#0A0A0A", position: "relative" }}>
+    <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 20%, rgba(88,176,104,.12) 0%, transparent 60%)" }} />
+    <motion.div initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .2, type: "spring" }}
+      style={{ padding: "0 24px 60px", display: "flex", flexDirection: "column", gap: 16, position: "relative", zIndex: 1 }}>
+      <div style={{ textAlign: "center", marginBottom: 16 }}>
+        <div style={{ fontSize: 72, marginBottom: 8 }}>🏍️</div>
+        <div style={{ fontFamily: "'Raleway',sans-serif", fontWeight: 900, fontStyle: "italic", fontSize: 38, color: "#F4F4F4" }}>
+          Moto<span style={{ color: "#58B068" }}>Fix</span>
+        </div>
+        <div style={{ color: "#A7D8A0", fontSize: 13, marginTop: 6, opacity: .9 }}>en movimiento, siempre contigo.</div>
+        <div style={{ color: "#666", fontSize: 13, marginTop: 20, lineHeight: 1.6 }}>
+          Conectamos motociclistas con mecánicos<br/>verificados en menos de 10 minutos.
+        </div>
+      </div>
+      <motion.button whileTap={{ scale: .97 }} onClick={() => onRole("client")}
+        style={{ ...S.btn, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+        🏍️ Soy Motociclista
+      </motion.button>
+      <motion.button whileTap={{ scale: .97 }} onClick={() => onRole("workshop")}
+        style={{ ...S.btnGhost, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+        🔧 Soy Mecánico / Taller
+      </motion.button>
+      <div style={{ textAlign: "center", color: "#555", fontSize: 12, marginTop: 4 }}>
+        Al continuar aceptas los Términos de Uso y Privacidad
+      </div>
+    </motion.div>
+  </div>
+);
 
-</Collapsible>
+// ─── CLIENT SCREENS ───
+const ClientHome = ({ onNav }) => {
+  const [greeting] = useState(() => {
+    const h = new Date().getHours();
+    return h < 12 ? "Buenos días" : h < 18 ? "Buenas tardes" : "Buenas noches";
+  });
+  return (
+    <div style={S.scrollArea}>
+      {/* Header */}
+      <div style={{ background: "linear-gradient(180deg,#111 0%,transparent 100%)", padding: "56px 20px 20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ color: "#666", fontSize: 13 }}>{greeting} 👋</div>
+            <div style={{ fontFamily: "'Raleway',sans-serif", fontWeight: 900, fontSize: 22, marginTop: 2 }}>Miguel Ríos</div>
+          </div>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <motion.button whileTap={{ scale: .9 }} style={{ background: "#161616", border: "1px solid #252525", borderRadius: 12, padding: 10, cursor: "pointer", position: "relative" }}>
+              <Icon name="bell" size={20} color="#888" />
+              <span style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, background: "#9C1000", borderRadius: "50%", border: "2px solid #0A0A0A" }} />
+            </motion.button>
+            <Avatar initials="MR" size={40} />
+          </div>
+        </div>
+        {/* Moto card */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .1 }}
+          style={{ ...S.cardGlow, marginTop: 20, display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ fontSize: 36 }}>🏍️</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>Honda Wave 110cc</div>
+            <div style={{ color: "#666", fontSize: 12, marginTop: 2 }}>ABC-123 · 2022 · 18,450 km</div>
+            <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+              <span style={S.tag("#58B068")}>Al día</span>
+              <span style={S.tag("#BFD7EA")}>SOAT vigente</span>
+            </div>
+          </div>
+          <Icon name="settings" size={18} color="#444" />
+        </motion.div>
+      </div>
 
-<VideoBoxLink
-  videoId="FdjczjkwQKE"
-  title="Expo Go & Development Builds: which should you use?"
-  description="In this tutorial video Beto explains what each of them is, and when to choose a development build."
-/>
-
-## Why use a development build (a.k.a what _can't_ you do in Expo Go and why)
-
-Expo Go is a playground for students and learners to understand the basics of React Native. It's limited and not useful for building production-grade projects, so most apps will convert to using development builds. It helps to know exactly what is _impossible_ in Expo Go and _why_, so you can make an informed decision on when and why to make this move.
-
-<Collapsible summary="Use libraries with native code that aren't in Expo Go">
-
-Consider [`react-native-webview`](/versions/latest/sdk/webview/) as an example, a library that contains native code, but [is included in Expo Go](https://github.com/expo/expo/blob/main/apps/expo-go/package.json#L23). When you run `npx expo install react-native-webview` command in your project, it will install the library in your **node_modules** directory, which includes both the JS code and the native code. But the JS bundle you are building _only_ uses the JS code. Then, your JS bundle gets uploaded to Expo Go, and it interacts with the native code that was already bundled with the app.
-
-Instead, when you try to use a library that is not included, for example, [`react-native-firebase`](/guides/using-firebase/#using-react-native-firebase), then you can use the JS code and hot reload the new bundle into Expo Go but it will immediately error because the JS code tries to call the native code from the React Native Firebase package that does not exist in Expo Go. There is no way to get the native code into the Expo Go app unless it was already included in the bundle that was uploaded to the app stores.
-
-</Collapsible>
-
-<Collapsible summary="Test changes in app icon, name, splash screen">
-
-If you're developing your app in Expo Go only, you can build a store version that will use your provided values and images; it just won't be possible to test it in Expo Go.
-
-These native assets are shipped with the native bundle and are immutable once the app is installed. The Expo Go app does show a splash screen, which is your app icon on a solid color background. This is a dev-only emulation to view how the splash screen will probably look. However, it is limited, for example, you cannot test `SplashScreen.setOptions` to animate the splash screen.
-
-</Collapsible>
-
-<Collapsible summary="Remote push notifications">
-
-While [in-app notifications](/versions/latest/sdk/notifications/) are available in Expo Go, remote push notifications (that is, sending a push notification from a server to the app) are not. This is because a push notification service should be tied to your own push notification certificates, and while it is possible to make it work in Expo Go, it often causes confusion for production builds. It is recommended to test remote push notifications in development builds so you can ensure parity in behavior between development and production.
-
-</Collapsible>
-
-<Collapsible summary="Implementing App/Universal links">
-
-Both [Android App Links](/linking/android-app-links/) and [iOS Universal Links](/linking/ios-universal-links/) require a two-way association between the native app and the website. In particular, it requires the native app to include the linked website's URL. This is impossible with Expo Go due to the aforementioned native code immutability.
-
-</Collapsible>
-
-<Collapsible summary="Open projects using older SDKs (iOS device only)">
-
-Expo Go can only support one SDK version at a time. When a new SDK version is released, Expo Go is updated to support the newer version, and this will be the only version of Expo Go available to install from the stores.
-
-If you're developing on an Android Device, Android Emulator, or iOS Simulator, a compatible version of Expo Go can be [downloaded and installed](https://expo.dev/go). The only platform where this is impossible is iPhone devices because Apple does not support side-loading older versions of apps.
-
-</Collapsible>
-
-<BoxLink
-  title="Expo Go to development build"
-  description="Learn how to migrate an existing Expo Go project to using development builds."
-  href="/develop/development-builds/expo-go-to-dev-build/"
-  Icon={BookOpen02Icon}
-/>
-
-<BoxLink
-  title="Local app development"
-  description="How to build a development client on your local machine."
-  href="/guides/local-app-development"
-  Icon={BookOpen02Icon}
-/>
-
-<BoxLink
-  title="Development builds on EAS"
-  description="How to build a development client on EAS."
-  href="/develop/development-builds/create-a-build/"
-  Icon={BookOpen02Icon}
-/>
+      <div style={{ padding: "0 20px", display: "flex", flexDirection: "column", gap: 20 }}>
+        {/* Emergency button */}
+        <motion.button whileTap={{ scale: .95 }} onClick={() => onNav("map")}
+          style={{ background: "linear-gradient(135deg,#9C1000 0%,#7a0c00 100%)", border: "1px s
